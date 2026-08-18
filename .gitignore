@@ -5,5 +5,5 @@ __pycache__/
 # raw source photos for the ASCII portrait pipeline -- only the
 # generated ascii-portrait.svg should be committed
 source-prepped.png
-forza.jpg
+red.jpg
 DOOM.jpg
