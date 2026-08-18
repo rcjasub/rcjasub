@@ -93,8 +93,13 @@ def build_svg(weeks: list[list[dict | None]], stats: dict) -> str:
 
     style = """
 <style>
-  .cell { opacity: 0; transform: translate(-6px, -6px); animation: reveal 0.35s ease-out forwards; }
-  @keyframes reveal { to { opacity: 1; transform: translate(0, 0); } }
+  .cell { opacity: 0; transform: scale(0); transform-box: fill-box; transform-origin: center;
+          animation: reveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  @keyframes reveal {
+    0% { opacity: 0; transform: scale(0); }
+    60% { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+  }
 </style>"""
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">{style}
