@@ -30,6 +30,9 @@ PAD_TOP = 20
 PAD_BOTTOM = 34
 FONT = "ui-monospace, SFMono-Regular, Consolas, monospace"
 
+DELAY_STEP = 0.028  # seconds added per diagonal step -- controls sweep speed
+POP_DURATION = 0.6  # seconds for one box's pop-in
+
 
 def load_data() -> tuple[list[dict], dict]:
     payload = json.loads(DATA_PATH.read_text())
@@ -72,7 +75,7 @@ def build_svg(weeks: list[list[dict | None]], stats: dict) -> str:
             color = PALETTE[min(day["level"], len(PALETTE) - 1)]
             x = PAD_LEFT + w * CELL
             y = PAD_TOP + r * CELL
-            delay = (w + r) * 0.012
+            delay = (w + r) * DELAY_STEP
             boxes.append(
                 f'<rect x="{x}" y="{y}" width="{BOX}" height="{BOX}" rx="2" '
                 f'fill="{color}" class="cell" style="animation-delay:{delay:.3f}s">'
@@ -91,15 +94,15 @@ def build_svg(weeks: list[list[dict | None]], stats: dict) -> str:
     total = stats.get("total", 0)
     footer = f"{total:,} contributions in the last year"
 
-    style = """
+    style = f"""
 <style>
-  .cell { opacity: 0; transform: scale(0); transform-box: fill-box; transform-origin: center;
-          animation: reveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-  @keyframes reveal {
-    0% { opacity: 0; transform: scale(0); }
-    60% { opacity: 1; transform: scale(1.15); }
-    100% { opacity: 1; transform: scale(1); }
-  }
+  .cell {{ opacity: 0; transform: scale(0); transform-box: fill-box; transform-origin: center;
+          animation: reveal {POP_DURATION}s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }}
+  @keyframes reveal {{
+    0% {{ opacity: 0; transform: scale(0); }}
+    60% {{ opacity: 1; transform: scale(1.15); }}
+    100% {{ opacity: 1; transform: scale(1); }}
+  }}
 </style>"""
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">{style}

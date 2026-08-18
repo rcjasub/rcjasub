@@ -2,23 +2,30 @@
 """Hand-author a neofetch-style info card SVG.
 
 Lines fade and slide in on a short stagger so the card looks like it's
-printing next to the portrait. Set STATIC=1 to emit a frozen frame
-(all lines already visible) for local Quick Look previews.
+printing next to the portrait, and a block cursor keeps blinking at the
+prompt once everything else has settled. Set STATIC=1 to emit a frozen
+frame (all lines visible, cursor solid) for local Quick Look previews.
+
+Reads data/github_stats.json (written by fetch_github_stats.py) for the
+Joined/Repos/Top Lang rows -- if that file doesn't exist yet, those rows
+are simply skipped.
 
 Usage:
     python scripts/make_info_card.py [output.svg]
 """
+import json
 import os
 import sys
 import textwrap
+from pathlib import Path
 
-# Edit these to taste -- placeholders for now.
+# Edit this to taste -- placeholder for now.
 TITLE = "rcjasub@github"
-FIELDS = [
+STATIC_FIELDS = [
     ("Stack", "C++, Java, TS, JS, Python, Node.js, React, Spring Boot, Go"),
-    ("Highlights", "Add a highlight here"),
-    ("Highlights", "Add another highlight here"),
 ]
+
+DATA_PATH = Path("data/github_stats.json")
 
 WIDTH = 490
 ROW_H = 30
@@ -49,10 +56,26 @@ def escape(text: str) -> str:
     )
 
 
+def load_dynamic_fields() -> list[tuple[str, str]]:
+    if not DATA_PATH.exists():
+        return []
+    stats = json.loads(DATA_PATH.read_text())
+    fields = []
+    if stats.get("joined_year"):
+        fields.append(("Joined", stats["joined_year"]))
+    if stats.get("public_repos") is not None:
+        fields.append(("Repos", str(stats["public_repos"])))
+    if stats.get("top_language"):
+        fields.append(("Top Lang", stats["top_language"]))
+    return fields
+
+
 def build_svg(static: bool) -> str:
+    fields = STATIC_FIELDS + load_dynamic_fields()
+
     rows = []
     y_cursor = TITLE_H
-    for i, (label, value) in enumerate(FIELDS):
+    for i, (label, value) in enumerate(fields):
         lines = textwrap.wrap(value, width=VALUE_WRAP) or [""]
         row_top = y_cursor
         begin = round(i * ROW_STAGGER, 3)
@@ -88,6 +111,26 @@ def build_svg(static: bool) -> str:
         rows.append(f'<g opacity="{opacity}"{transform}>{"".join(text_lines)}{anim}</g>')
         y_cursor += ROW_H + (len(lines) - 1) * LINE_H
 
+    # blinking prompt cursor, starts once the last field has finished revealing
+    last_begin = round((len(fields) - 1) * ROW_STAGGER, 3) if fields else 0.0
+    cursor_begin = last_begin + FADE_DURATION
+    cursor_y = y_cursor + ROW_H * 0.65
+    cursor_blink = (
+        ""
+        if static
+        else (
+            f'<animate attributeName="opacity" values="1;0;1" dur="1s" '
+            f'begin="{cursor_begin}s" repeatCount="indefinite" />'
+        )
+    )
+    cursor_svg = (
+        f'<text x="{PAD_X}" y="{cursor_y}" font-family="{FONT}" font-size="13" '
+        f'fill="{DIM_COLOR}">$</text>'
+        f'<rect x="{PAD_X + 16}" y="{cursor_y - 11}" width="8" height="13" fill="{VALUE_COLOR}">'
+        f'{cursor_blink}</rect>'
+    )
+    y_cursor += ROW_H
+
     height = y_cursor + 20
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" viewBox="0 0 {WIDTH} {height}">
@@ -99,6 +142,7 @@ def build_svg(static: bool) -> str:
 <circle cx="58" cy="20" r="5" fill="#27c93f" />
 <text x="{WIDTH / 2}" y="25" font-family="{FONT}" font-size="12" fill="{DIM_COLOR}" text-anchor="middle">{escape(TITLE)}</text>
 {"".join(rows)}
+{cursor_svg}
 </svg>'''
 
 
