@@ -10,19 +10,20 @@ Usage:
 """
 import os
 import sys
+import textwrap
 
 # Edit these to taste -- placeholders for now.
 TITLE = "rcjasub@github"
 FIELDS = [
-    ("Now", "Software Engineer"),
-    ("Prev", "Add your previous role here"),
-    ("Stack", "Add your stack here"),
+    ("Stack", "C++, Java, TS, JS, Python, Node.js, React, Spring Boot, Go"),
     ("Highlights", "Add a highlight here"),
     ("Highlights", "Add another highlight here"),
 ]
 
 WIDTH = 490
 ROW_H = 30
+LINE_H = 17  # spacing between wrapped lines within one field
+VALUE_WRAP = 38  # characters per line in the value column
 PAD_X = 22
 TITLE_H = 40
 FONT = "ui-monospace, SFMono-Regular, Consolas, monospace"
@@ -49,19 +50,15 @@ def escape(text: str) -> str:
 
 
 def build_svg(static: bool) -> str:
-    height = TITLE_H + len(FIELDS) * ROW_H + 20
-
     rows = []
+    y_cursor = TITLE_H
     for i, (label, value) in enumerate(FIELDS):
-        y = TITLE_H + i * ROW_H + ROW_H * 0.65
+        lines = textwrap.wrap(value, width=VALUE_WRAP) or [""]
+        row_top = y_cursor
         begin = round(i * ROW_STAGGER, 3)
 
-        if static:
-            opacity_attr = ""
-            transform = ""
-        else:
-            opacity_attr = "0"
-            transform = f' transform="translate(-12 0)"'
+        transform = "" if static else ' transform="translate(-12 0)"'
+        opacity = "1" if static else "0"
 
         anim = ""
         if not static:
@@ -73,16 +70,25 @@ def build_svg(static: bool) -> str:
                 f'fill="freeze" />'
             )
 
-        opacity = "0" if not static else "1"
-        rows.append(
-            f'<g opacity="{opacity}"{transform}>'
-            f'<text x="{PAD_X}" y="{y}" font-family="{FONT}" font-size="13" '
-            f'font-weight="600" fill="{LABEL_COLOR}">{escape(label)}</text>'
-            f'<text x="{PAD_X + 120}" y="{y}" font-family="{FONT}" font-size="13" '
-            f'fill="{VALUE_COLOR}">{escape(value)}</text>'
-            f'{anim}'
-            f'</g>'
-        )
+        text_lines = []
+        for li, line in enumerate(lines):
+            y = row_top + ROW_H * 0.65 + li * LINE_H
+            label_text = (
+                f'<text x="{PAD_X}" y="{y}" font-family="{FONT}" font-size="13" '
+                f'font-weight="600" fill="{LABEL_COLOR}">{escape(label)}</text>'
+                if li == 0
+                else ""
+            )
+            value_text = (
+                f'<text x="{PAD_X + 120}" y="{y}" font-family="{FONT}" font-size="13" '
+                f'fill="{VALUE_COLOR}">{escape(line)}</text>'
+            )
+            text_lines.append(label_text + value_text)
+
+        rows.append(f'<g opacity="{opacity}"{transform}>{"".join(text_lines)}{anim}</g>')
+        y_cursor += ROW_H + (len(lines) - 1) * LINE_H
+
+    height = y_cursor + 20
 
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{height}" viewBox="0 0 {WIDTH} {height}">
 <rect x="0.5" y="0.5" width="{WIDTH - 1}" height="{height - 1}" rx="8" fill="{BG}" stroke="{BORDER}" />
