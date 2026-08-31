@@ -137,9 +137,6 @@ def build_svg(static: bool) -> str:
 <rect x="0.5" y="0.5" width="{WIDTH - 1}" height="{height - 1}" rx="8" fill="{BG}" stroke="{BORDER}" />
 <rect x="0.5" y="0.5" width="{WIDTH - 1}" height="{TITLE_H}" rx="8" fill="{TITLE_BG}" />
 <rect x="0.5" y="{TITLE_H - 8}" width="{WIDTH - 1}" height="8" fill="{TITLE_BG}" />
-<circle cx="22" cy="20" r="5" fill="#ff5f56" />
-<circle cx="40" cy="20" r="5" fill="#ffbd2e" />
-<circle cx="58" cy="20" r="5" fill="#27c93f" />
 <text x="{WIDTH / 2}" y="25" font-family="{FONT}" font-size="12" fill="{DIM_COLOR}" text-anchor="middle">{escape(TITLE)}</text>
 {"".join(rows)}
 {cursor_svg}
