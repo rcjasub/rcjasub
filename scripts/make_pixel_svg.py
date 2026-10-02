@@ -3,13 +3,15 @@
 PixelatedCanvas: square dots, sample-averaged color, dropout, white tint).
 
 GitHub READMEs can't run canvas/JS, so the dot grid is baked into a PNG,
-embedded in the SVG, and revealed top-to-bottom with a SMIL scanline.
+embedded in the SVG, and typed in band by band with the same SMIL row wipe
+and cursor as the ASCII portrait (make_ascii_svg.py).
 
 Usage:
     python scripts/make_pixel_svg.py [Img/ffr.png] [pixel-portrait.svg]
 """
 import base64
 import io
+import math
 import sys
 
 import numpy as np
@@ -31,7 +33,12 @@ BORDER = "#262626"  # neutral-800
 # crop box on the source (x0, y0, x1, y1), as fractions, to fit 4:5
 CROP = (0.15, 0.2, 0.95, 0.766)
 
-REVEAL_DURATION = 1.6  # seconds for the scanline to sweep down
+# row-typing load, matching make_ascii_svg.py
+BAND_H = CELL_SIZE * 3  # px per "row" of the typing wipe (3 dot rows)
+ROW_STAGGER = 0.045  # seconds between row starts
+ROW_DURATION = 0.5  # seconds for a row's wipe-in
+CURSOR_W = 4.8
+CURSOR_FILL = "#8b949e"
 SEED = 7
 
 DEFAULT_SRC = "Img/ffr.png"
@@ -83,27 +90,40 @@ def build_svg(dots: Image.Image) -> str:
     dots.save(buf, format="PNG", optimize=True)
     data = base64.b64encode(buf.getvalue()).decode("ascii")
     w, h = WIDTH, HEIGHT
+
+    defs = [
+        f'<clipPath id="round"><rect width="{w}" height="{h}" rx="{RADIUS}" /></clipPath>',
+        f'<image id="dots" width="{w}" height="{h}" '
+        f'xlink:href="data:image/png;base64,{data}" />',
+    ]
+    body = []
+    for i in range(math.ceil(h / BAND_H)):
+        y = i * BAND_H
+        band_h = min(BAND_H, h - y)
+        begin = round(i * ROW_STAGGER, 3)
+        defs.append(
+            f'<clipPath id="clip{i}">'
+            f'<rect x="0" y="{y}" width="0" height="{band_h}">'
+            f'<animate attributeName="width" from="0" to="{w}" begin="{begin}s" '
+            f'dur="{ROW_DURATION}s" fill="freeze" calcMode="spline" keySplines="0.2 0 0.2 1" />'
+            f'</rect></clipPath>'
+        )
+        body.append(f'<use xlink:href="#dots" clip-path="url(#clip{i})" />')
+        body.append(
+            f'<rect x="0" y="{y}" width="{CURSOR_W}" height="{band_h * 0.85:.2f}" '
+            f'fill="{CURSOR_FILL}">'
+            f'<animate id="cursor{i}" attributeName="x" from="0" to="{w}" '
+            f'begin="{begin}s" dur="{ROW_DURATION}s" fill="freeze" />'
+            f'<set attributeName="opacity" to="0" begin="cursor{i}.end" fill="freeze" />'
+            f'</rect>'
+        )
+
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'xmlns:xlink="http://www.w3.org/1999/xlink" width="{w}" height="{h}" '
         f'viewBox="0 0 {w} {h}">'
-        f'<defs>'
-        f'<clipPath id="round"><rect width="{w}" height="{h}" rx="{RADIUS}" /></clipPath>'
-        f'<clipPath id="reveal"><rect width="{w}" height="0">'
-        f'<animate attributeName="height" from="0" to="{h}" dur="{REVEAL_DURATION}s" '
-        f'fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" />'
-        f'</rect></clipPath>'
-        f'</defs>'
-        f'<g clip-path="url(#round)">'
-        f'<rect width="{w}" height="{h}" fill="rgb{BACKGROUND}" />'
-        f'<image clip-path="url(#reveal)" width="{w}" height="{h}" '
-        f'xlink:href="data:image/png;base64,{data}" />'
-        f'<rect width="{w}" height="2" fill="#ffffff" opacity="0.6">'
-        f'<animate attributeName="y" from="0" to="{h}" dur="{REVEAL_DURATION}s" '
-        f'fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" />'
-        f'<set attributeName="opacity" to="0" begin="{REVEAL_DURATION}s" fill="freeze" />'
-        f'</rect>'
-        f'</g>'
+        f'<defs>{"".join(defs)}</defs>'
+        f'<g clip-path="url(#round)">{"".join(body)}</g>'
         f'<rect x="0.5" y="0.5" width="{w - 1}" height="{h - 1}" rx="{RADIUS}" '
         f'fill="none" stroke="{BORDER}" />'
         f'</svg>'

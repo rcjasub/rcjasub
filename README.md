@@ -13,9 +13,4 @@
   </tr>
 </table>
 
-<br>
-
-<h3><code>rcjasub@github ~ $ ./luma --on</code></h3>
-<a href="https://rcjasub.github.io/rcjasub/"><img src="./luma/preview.jpg" width="860" alt="Luma — a lantern you can switch on. Click to open the live page." /></a>
-
 </div>
