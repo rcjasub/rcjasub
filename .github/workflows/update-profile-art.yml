@@ -10,8 +10,13 @@ name: Update profile art
 permissions:
   contents: write
 
+concurrency:
+  group: profile-art
+  cancel-in-progress: false
+
+# the contribution heatmap has its own workflow (update-contributions.yml)
 jobs:
-  heatmap:
+  info-card:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,11 +24,9 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install requests==2.32.3 beautifulsoup4==4.12.3
-      - run: python scripts/fetch_contributions.py
-      - run: python scripts/render_heatmap_svg.py
       - run: python scripts/fetch_github_stats.py
       - run: python scripts/make_info_card.py
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: refresh profile art [skip ci]"
-          file_pattern: "data/contributions.json contrib-heatmap.svg data/github_stats.json info-card.svg"
+          file_pattern: "data/github_stats.json info-card.svg"

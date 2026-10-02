@@ -1,0 +1,41 @@
+name: Update contribution heatmap
+
+# Polls for a new push to any of your repos and only then redraws the dots.
+# To include private repos, add a personal access token as the
+# GH_EVENTS_TOKEN secret; without it, only public pushes are seen.
+"on":
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: profile-art
+  cancel-in-progress: false
+
+jobs:
+  heatmap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # check_new_push.py reads the heatmap's last commit time
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests==2.32.3 beautifulsoup4==4.12.3
+      - id: check
+        run: python scripts/check_new_push.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_EVENTS_TOKEN || github.token }}
+      - if: steps.check.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          python scripts/fetch_contributions.py
+          python scripts/render_heatmap_svg.py
+      - if: steps.check.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: refresh contribution heatmap [skip ci]"
+          file_pattern: "data/contributions.json contrib-heatmap.svg"
